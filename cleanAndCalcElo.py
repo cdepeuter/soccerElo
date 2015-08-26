@@ -24,8 +24,10 @@ def getPrevGameForTeam(team, date):
 
 def getPrevEloForTeam(team, date):
     global eloCache
+
     if team in eloCache:
         return eloCache[team]
+
     g = getPrevGameForTeam(team, date)
     if len(g) == 0:
         #if this is their first game then their elo starts at 1500
@@ -49,7 +51,6 @@ def calcPostElo(homeElo, awayElo, homeScore, awayScore, neutral, k):
     else:
         g = (11 +  abs(homeScore - awayScore))*1.0/8.0
 
-    
     diff = math.floor(k*g*(w-we))
     return (homeElo + diff, awayElo - diff)
 
@@ -66,96 +67,61 @@ def getKForCompetition(comp, rnd, country):
         (comp == "serie-a" and country == "italy") or \
         (comp == "bundesliga" and country == "germany"):
         return 40
-
     elif "friendly" in comp:
         return 20
     else: 
         return 30
 
-
-#keep track of how much time spent doing each task
-setVals= 0
-getElos = 0
-
-
-def doUpdate(game):
-    global count
-    global setVals
-    global getElos
-    #t = time.time()
+def doEloUpdate(game):
     date = game['date']
     homePre = getPrevEloForTeam(game['home'], date)
     awayPre = getPrevEloForTeam(game['away'], date)
 
-    
+    #if its been two months since your last game, lets adjust that to norm (end of season breaks)
     if game['home'] in gameDateCache and (date - gameDateCache[game['home']]).days > 60:
             homePre = math.floor(.75*homePre + 375)
     if game['away'] in gameDateCache and (date - gameDateCache[game['away']]).days > 60:
         awayPre = math.floor(.75*awayPre + 375)
 
-
     k = getKForCompetition(game['comp'], game['rnd'], game['country'])
     tup = calcPostElo(homePre, awayPre, game['hScore'], game['aScore'], game['neutralSite'], k)
-    eloCache[game['home']], eloCache[game['away']] = tup
-    #newTime = time.time()
-    #getElos = getElos + newTime-t
-    #if its been over a month and half since your last game, lets adjust that to norm (end of season breaks)
 
-        
-    #print("settin values")
+    #store these for quick retrieval (eloCache was already declared as global)
+    eloCache[game['home']], eloCache[game['away']] = tup
     game['hElo'] , game['aElo'] = tup
-    #finalTime = time.time()
-    #setVals = setVals + finalTime - newTime
-    #print(count, date, getElos, setVals)
-    count = count +1
-    #print("Se4")
-       
 
     return game
 
+if __name__ == "__main__":
+    debug = True
+    translate = {"ecosse": "scotland", "angleterre":"england", "espagne": "spain", "italie": "italy", "allemagne": "germany", "pays-de-galles": "wales", "croatie" : "croatia", "pays-bas" : "holland"}
+    frames = []
+    for i in range(0, 99):
+        csv = "data/games"+str(i)+".csv"
+        try:
+            toAdd = pd.read_csv(csv)
+        except IOError:
+            if debug:  
+                print("nofile", csv)
+            continue
+        frames.append(toAdd)
+    games = pd.concat(frames)
 
-translate = {"ecosse": "scotland", "angleterre":"england", "espagne": "spain", "italie": "italy", "allemagne": "germany", "pays-de-galles": "wales", "croatie" : "croatia", "pays-bas" : "holland"}
+    #mid's are not unique on website, filter by teams as well
+    games = games.drop_duplicates(subset = ['mid', 'home', 'away'])
+    if debug:
+        print("dropped dups", len(games))
 
+    eloCache = {}
+    gameDateCache = {}
 
-frames = []
-i = 0
-for i in range(0, 99):
-    csv = "data/games"+str(i)+".csv"
-    try:
-        toAdd = pd.read_csv(csv)
-    except IOError:
-        print("nofile", csv)
-        continue
-    frames.append(toAdd)
-    print(len(toAdd))
-    i += len(toAdd)
-    #d.append(toAdd)
-    print(csv, len(frames))
-#print(d)
-games = pd.concat(frames)
+    ##make the dateStrings datetimes and sort the db by that
+    games['date'] = pd.to_datetime(games.pop('date'))
+    games = games.sort("date")
+    games['country'] = games['country'].apply(lambda x: translate[x] if x in translate else x)
 
-print("before dups", len(games))
-#mid's are not unique on website, filter by teams as well
-games = games.drop_duplicates(subset = ['mid', 'home', 'away'])
-print("dropped dups", len(games))
-
-
-eloCache = {}
-gameDateCache = {}
-
-##make the dateStrings datetimes and sort the db by that
-games['date'] = pd.to_datetime(games.pop('date'))
-print(games.head())
-games = games.sort("date")
-print("translating country")
-games['country'] = games['country'].apply(lambda x: translate[x] if x in translate else x)
-print(games.head())
-
-count = 0
-print("looping through games")
-
-games = games.apply(doUpdate, axis = 1)
-games.to_csv("data/games.csv", index=False)     
-
-
-print("done")
+    count = 0
+    if debug:
+        print("calculating elo", len(games))
+    games = games.apply(doEloUpdate, axis = 1)
+    games.to_csv("data/games.csv", index=False)     
