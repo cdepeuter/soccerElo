@@ -23,13 +23,14 @@ from datetime import datetime
 import csv as csv
 import fr
 
+debug = True
+missedRounds = []
+gameId = 0
+
 
 def getGamesForRound(s):
-    global debug
     global gameId
     global missedRounds
-
-
     comp, country, year, rnd = s.split(".")[2:6]
     rnd2 = "" if rnd is None else rnd
     soup = fr.read("http://www.footballdatabase.eu/"+s)
@@ -126,13 +127,12 @@ if __name__ == "__main__":
         for line in f.readlines():
             allRounds.append(line)
 
-    print(len(allRounds))
-
-    gameId = 0
+    
     col = ["mid", "date","ref","home","hScore","aScore","away","comp","country","rnd","ot","pks","homePks","awayPks","hElo","aElo","neutralSite","url"]
     games = pd.DataFrame(columns=col)
-    missedRounds = []
-    print games
+    if debug:
+        print(len(allRounds))
+        #print games
     c = None
 
 
@@ -149,8 +149,8 @@ if __name__ == "__main__":
 
 
     if debug:
-
         print("going through rounds: ", lowerBound, upperBound)
+
     for i, rnd in enumerate(allRounds):
         if i in range(int(lowerBound), int(upperBound)):
             if i % 100 == 0:

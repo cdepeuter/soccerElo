@@ -16,6 +16,10 @@ import time
 from datetime import datetime
 import pandas as pd
 
+debug = True
+eloCache = {}
+gameDateCache = {}
+
 def getPrevGameForTeam(team, date):
     global games
     game = games[((games['home']==team) | (games['away']==team)) & (games['date'] < date)].tail(1)
@@ -23,8 +27,6 @@ def getPrevGameForTeam(team, date):
 
 
 def getPrevEloForTeam(team, date):
-    global eloCache
-
     if team in eloCache:
         return eloCache[team]
 
@@ -93,7 +95,7 @@ def doEloUpdate(game):
     return game
 
 if __name__ == "__main__":
-    debug = True
+
     translate = {"ecosse": "scotland", "angleterre":"england", "espagne": "spain", "italie": "italy", "allemagne": "germany", "pays-de-galles": "wales", "croatie" : "croatia", "pays-bas" : "holland"}
     frames = []
     for i in range(0, 99):
@@ -112,8 +114,7 @@ if __name__ == "__main__":
     if debug:
         print("dropped dups", len(games))
 
-    eloCache = {}
-    gameDateCache = {}
+
 
     ##make the dateStrings datetimes and sort the db by that
     games['date'] = pd.to_datetime(games.pop('date'))

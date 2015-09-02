@@ -15,13 +15,12 @@ import csv as csv
 from unidecode import unidecode
 import fr
 
+debug = True
+
 
 def getRelatedYearsForCompetition(s):
     #for each competition, we need to get the years which this competition happened 
     #theres a dropdown for that
-    global debug
-    global missed
-
     url = "http://www.footballdatabase.eu/"+s
     years = []
     soup = fr.read(url)
@@ -41,7 +40,6 @@ def getRelatedYearsForCompetition(s):
 def getRoundsForCompetitionYear(s):
     #for each competition + year, theres specific rounds
     #if we go to the comp default page theres also a dropdown for that
-    global missedRC
     url = "http://www.footballdatabase.eu/"+s
     rounds = []
     soup = fr.read(url)
@@ -53,7 +51,7 @@ def getRoundsForCompetitionYear(s):
 
 
 if __name__ == "__main__":
-    debug = True
+
     competitions = []
 
     with open("data/competitions.csv", 'r') as f:
